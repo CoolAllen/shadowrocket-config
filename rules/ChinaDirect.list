@@ -185,6 +185,15 @@ DOMAIN-SUFFIX,wuuxiang.com
 # 夸克网盘 (阿里巴巴集团)
 DOMAIN-SUFFIX,quark.cn
 
+# 听云 APM (北京基调网络股份有限公司)
+DOMAIN-SUFFIX,tingyun.com
+
+# 倍孜广告归因 SDK (上海倍孜网络技术有限公司)
+DOMAIN-SUFFIX,beizi.biz
+
+# 得物 (上海得物信息集团有限公司)
+DOMAIN-SUFFIX,dewu.com
+
 # ===== 以下为归属未确认的特例（置于末尾，与已确认归属的域名区分）=====
 # 收录理由: 归属无法确认, 但 NS 在国内托管商或站点排斥代理出口 IP, 需按直连处理; 置于末尾作为特例, 待归属明确后迁移至上方对应分组或移除
 DOMAIN-SUFFIX,sjxydc.com
