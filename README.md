@@ -1,6 +1,6 @@
 # Shadowrocket 防 DNS 泄露配置
 
-基于 [ACL4SSR](https://github.com/ACL4SSR/ACL4SSR) 规则集的 Shadowrocket 配置文件，国内 UDP + 境外 DoH 混合策略，兼顾防泄露与 CDN 调度精准。
+基于 [ACL4SSR](https://github.com/ACL4SSR/ACL4SSR) 规则集的 Shadowrocket 配置文件，境外域名经规则层交由代理远端解析，本地解析仅走国内 UDP，兼顾防泄露与 CDN 调度精准。
 
 ## 订阅链接
 
@@ -29,12 +29,10 @@ https://cdn.jsdelivr.net/gh/DuskWander87/shadowrocket-config@main/shadowrocket.c
 
 ### DNS 防泄露
 
-- **国内 UDP + 境外 DoH 混合并发**：阿里/腾讯 UDP + Cloudflare/Google DoH 四路并发取最快
-- **国内站点保最优 CDN**：UDP DNS 携带 ECS 客户端子网，CDN 调度精准到本地节点
-- **境外站点防污染**：Cloudflare/Google DoH 加密兜底，自动剔除被污染的 IP
+- **境外域名不在本地解析**：IP 规则全带 `no-resolve`，境外域名一路落 `FINAL` 后由 `force-remote-dns` 交代理远端解析，防污染由规则层承担
+- **本地解析仅国内 UDP**：阿里/腾讯承担直连域名与代理节点域名的解析，公共 DNS 按递归源 IP 调度，CDN 就近
 - **禁用 IPv6**：避免 v6 通道绕过 DNS 配置造成泄露
 - **拒绝私有 IP 应答**：防 DNS rebinding 攻击
-- **DNS 失败请求走代理重试**：`FINAL,PROXY,dns-failed`
 
 ### URL 重写
 
@@ -52,7 +50,7 @@ https://cdn.jsdelivr.net/gh/DuskWander87/shadowrocket-config@main/shadowrocket.c
 | 6 | DIRECT | 国内域名 / 流媒体 | ACL4SSR `ChinaDomain.list` / `ChinaMedia.list` |
 | 7 | DIRECT | 国内企业 IP / 国内 IP | ACL4SSR `ChinaCompanyIp.list` / `ChinaIp.list` |
 | 8 | DIRECT | `GEOIP,CN` | 内置 GeoIP 兜底 |
-| 9 | PROXY | 其他流量 | `FINAL,PROXY,dns-failed` 兜底 |
+| 9 | PROXY | 其他流量 | `FINAL,PROXY,force-remote-dns` 兜底 |
 
 
 ## 维护

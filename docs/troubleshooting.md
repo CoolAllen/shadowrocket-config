@@ -10,7 +10,7 @@ Shadowrocket 配置在使用中遇到的运行时问题与排查方法。配置�
 
 **根因**：`shadowrocket.conf` 曾加入 `BlockHttpDNS` 拦截（`RULE-SET, ...BlockHttpDNS.list, REJECT`），其中包含 `DOMAIN,httpdns.meituan.com`。美团 App 内置 HTTPDNS 请求被 REJECT 后，SDK 要等握手失败/超时才回落系统 DNS，首屏因此明显变慢。**同类问题会出现在任何重度依赖内置 HTTPDNS 的国内 App**（支付宝、腾讯系等）。
 
-**处置**：已移除 `BlockHttpDNS` 拦截（提交 `fd6cc5d`）。国内 App 回落系统 DNS 后走 `dns-server` 的阿里/腾讯 UDP（带 ECS），解析与 CDN 调度无损，防泄露目标不受影响。
+**处置**：已移除 `BlockHttpDNS` 拦截（提交 `fd6cc5d`）。国内 App 回落系统 DNS 后走 `dns-server` 的阿里/腾讯 UDP，解析与 CDN 调度无损，防泄露目标不受影响。
 
 **相关排查**：同批加入的 `block-quic = all-proxy` 曾先被怀疑为元凶，实测排除（移除后仍慢——美团的 QUIC 走直连，`all-proxy` 不拦直连流量），已恢复（提交 `5128f97`）。
 
@@ -23,6 +23,30 @@ Shadowrocket 配置在使用中遇到的运行时问题与排查方法。配置�
 | 美团主域被 ACL4SSR 覆盖走直连 | 流量未漏走代理，无需改分流规则 |
 
 **教训**：App（尤其国内大厂 App）卡顿时，先查 `BlockHttpDNS` 拦截——它置于 `[Rule]` 最前、拦截面最大，且症状（卡顿而非断流）容易被误判为网络或分流问题。
+
+## `dns-server` 中境外 DoH 未实际生效（DNS 泄漏实测）
+
+**背景**：issue #2 质疑 `dns-server` 混排「国内 UDP + 境外 DoH」的写法：若 Shadowrocket 并发竞速，明文 UDP 几乎恒快于 DoH，DoH 起不到防污染作用，反而让 Cloudflare/Google 看到国内直连域名的查询。该行为无官方文档背书（Surge 语义是「配置加密 DNS 后明文服务器不再用于普通域名」，与 Shadowrocket 实测不符），需实测裁决。
+
+**测试方法**：用 DNS 泄漏测试站（dnsleaktest.com Extended test）观察权威 NS 侧的 resolver 名单。原理：测试站解析**唯一随机子域名**，缓存必然 miss，本地每一路参与查询的 DNS 服务器都必然去问权威 NS、留下出口 IP 记录——**权威侧名单 = 实际参与查询的完整名单**，比翻本地日志可靠。关键前置：给测试站临时加 `DOMAIN-SUFFIX,dnsleaktest.com,DIRECT` 规则，让解析发生在本地 `dns-server`，而非落 `FINAL` 被代理远端解析。
+
+**结果**（两轮，上海电信家宽）：
+
+| 轮次 | `dns-server` 配置 | 权威侧 resolver |
+|---|---|---|
+| 1 | 阿里 + 腾讯 UDP + Cloudflare/Google DoH | 阿里出口、上海电信 IP 若干，**无任何 Cloudflare/Google 出口** |
+| 2 | 仅阿里 UDP | 阿里出口 + `180.153.91.x` 等上海电信 IP |
+
+**结论**：
+
+1. **两个境外 DoH 从未参与任何查询**——若参与过，随机子域名必然在权威侧留下它们的出口 IP。1.1.1.1/8.8.8.8 的 443 从国内直连不稳，DoH 建连大概率从未成功。属死配置，已移除（`shadowrocket.conf` 的 `dns-server` 仅保留阿里/腾讯，`[Host]` 中配套的 `dns.google` bootstrap 映射一并移除）。
+2. **防污染实际由规则层承担**，与 DNS 服务器选择无关：IP 规则全带 `no-resolve`，境外域名不经本地解析，落 `FINAL` 后由 `force-remote-dns` 交代理远端解析。
+3. **本地明文 UDP 解析对运营商可见**是固有属性（测试中权威侧出现上海电信出口 IP）。其中 `180.153.91.x` 倾向为阿里/DNSPod 在电信 IDC 的托管节点（与公开部署信息吻合，DNSPod 出口在去掉 `119.29.29.29` 后即消失），也不排除运营商介入明文查询，未做进一步裁决——无论哪种情况均不影响上述结论与处置。
+4. 顺带修正注释措辞：CDN 调度准来自公共 DNS **按递归源 IP 调度**，普通客户端的 UDP 查询并不携带 ECS。
+
+**遗留风险**：**代理节点域名是唯一必须本地解析的境外域名**（明文 UDP 有被污染的理论风险，症状为连不上节点）。缓解：节点用纯 IP，或在 `[Host]` 中静态映射节点域名（命中映射即跳过 DNS 查询，连查询都不发）。
+
+**教训**：判断 DNS 配置是否生效，**别看配置宣称什么，看权威侧谁查过**——随机子域名泄漏测试一次给出完整的 resolver 名单，本地日志只能看到「谁赢了」，看不到「谁根本没上场」。
 
 ## 影视聚合站视频无法播放（第三方资源域名未收录）
 
