@@ -6,6 +6,7 @@
 # 更新: 手动维护，新增域名请先通过 domain-verify skill 确认归属
 
 # 字节跳动系
+DOMAIN-SUFFIX,byteacctimg.com
 DOMAIN-SUFFIX,bytegecko.com
 DOMAIN-SUFFIX,bytehwm.com
 DOMAIN-SUFFIX,bytemastatic.com
@@ -37,6 +38,9 @@ DOMAIN-SUFFIX,dcdapp.com
 DOMAIN-SUFFIX,autoengine.com
 # 懂车聚光 (北京懂车帝科技有限公司)
 DOMAIN-SUFFIX,dongchejuguang.com
+# 巨量引擎 (北京巨量引擎网络技术有限公司)
+DOMAIN-SUFFIX,oceanengine.com
+
 # 豆包 AI (北京字节跳动科技有限公司)
 DOMAIN-SUFFIX,doubao.com
 # 飞书 (北京字节跳动科技有限公司)
@@ -124,9 +128,11 @@ DOMAIN-SUFFIX,aihuishou.com
 # 极客时间 (北京极客邦科技有限公司)
 DOMAIN-SUFFIX,geekbang.org
 
-# 火山引擎 (北京字节跳动科技有限公司)
+# 火山引擎 (北京火山引擎科技有限公司)
 DOMAIN-SUFFIX,volces.com
 DOMAIN-SUFFIX,huoshanimg.com
+DOMAIN-SUFFIX,volccdn.com
+DOMAIN-SUFFIX,volcvod.com
 
 # 收钱吧 (上海喔噻互联网科技有限公司)
 DOMAIN-SUFFIX,shouqianba.com
