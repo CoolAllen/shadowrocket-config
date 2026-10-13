@@ -12,3 +12,5 @@ desktop.ini
 
 .serena/
 .claude/settings.local.json
+# Playwright MCP 本地数据
+.playwright-mcp/
