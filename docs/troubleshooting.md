@@ -152,3 +152,47 @@ curl -s -o /dev/null -x http://127.0.0.1:7897 -w "代理 HTTP:%{http_code}\n" "h
 **教训**：影视聚合站的「站点域名 / 播放列表域名 / 分片域名」通常是三组不同的域，**只看站点或 JS 里的片段线索必然误判**。应尽早抓播放接口的返回内容——那里有权威答案，一步到位。
 
 第二个教训在测试方法上：`https_proxy` 环境变量会让 curl 静默走代理，**直连测试不显式 `--noproxy '*'` 等于没测**。
+
+## hash 路由页面经代理打开报 400「The request URL is invalid.」（fragment 未剥离）
+
+**症状**：微信内置浏览器打开漫步者售后服务页（易售后平台，`http://www.eshouhou.cn/html5/#/pages/login/startPage/startPage?…`）时，开代理显示一张 `HTTP Error 400. The request URL is invalid.` 错误页，关闭代理立即正常。Safari 打开同一链接不受影响。Shadowrocket 日志里只有 `DIRECT` 行，**既无代理记录也无拦截记录**，分流规则看不出任何异常。
+
+**根因**：该页是 hash 路由，`#` 之后是 fragment。按 RFC 3986 §3.5，客户端必须剥离 fragment 后才发请求；开代理时这条规范化在转发链上丢失，含 `#` 的完整 URL 被放进了 HTTP 请求行。源站为 `Microsoft-IIS/10.0` + `Microsoft-HTTPAPI/2.0`（http.sys），http.sys 严格校验请求行 URL 形态，遇到 `#` 判定非法并返回该错误页。
+
+### 关键判据：用 http.sys 的 400 文案反推病因
+
+该站的 400 文案按触发条件严格区分，文案本身就是最快的定位线索：
+
+| 请求行 | 文案 |
+|---|---|
+| 缺 `Host` 头 | `HTTP Error 400. The request hostname is invalid.` |
+| 含空格 | `HTTP Error 400. The request is badly formed.` |
+| 含 `#`，或含裸 `%` / `%zz` 等非法转义 | `HTTP Error 400. The request URL is invalid.` |
+
+对源站直接发请求行的实测对照（`101.201.148.74:80`）：
+
+```
+GET /html5/#/pages/login/…              → 400 The request URL is invalid.
+GET http://www.eshouhou.cn/html5/#/…    → 400 The request URL is invalid.
+GET /html5/#                            → 400 The request URL is invalid.
+GET /html5/                             → 200 OK   ← 按规范剥离 fragment
+GET /html5/?access_token=…（无 #）       → 200 OK   ← 带完整 query（含 Base64 尾部 =），无 fragment
+```
+
+### 判据：这三个现象都与分流无关
+
+下列现象容易被读成分流问题，实际都属于本机制的必然结果：
+
+| 现象 | 实际含义 |
+|---|---|
+| 日志只有 `DIRECT`，无代理/拦截行 | 连接确实直连且已建立；出错在应用层报文的 URL 形态，路由决策全程正常 |
+| 命中的规则与其他客户端一致 | 域名由上游 `ChinaDomain.list` 的 `DOMAIN-SUFFIX,cn` 给出直连，规则层未参与 |
+| 关代理即恢复 | 关代理后客户端按规范剥离 fragment，请求行变为 `/html5/` |
+
+> 开启代理改变的不只是路由，还可能是**请求报文本身**。只查规则文件与 IP 归属覆盖不到后一类。
+
+**处置**：
+
+- 改用 **HTTPS** 打开该页：HTTPS 下代理只看到 `CONNECT host:443`，请求路径在 TLS 内由浏览器构造，fragment 必然被剥离，问题从根上绕开。
+- 该站对 `/html5/` **不做 HTTP→HTTPS 跳转**（`http` 与 `https` 均返回 200），拿不到服务端自动保护，需手动把链接的 `http://` 改为 `https://`。
+- 临时关闭代理可访问，仅作应急。
