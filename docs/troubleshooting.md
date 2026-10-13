@@ -191,8 +191,10 @@ GET /html5/?access_token=…（无 #）       → 200 OK   ← 带完整 query�
 
 > 开启代理改变的不只是路由，还可能是**请求报文本身**。只查规则文件与 IP 归属覆盖不到后一类。
 
-**处置**：
+**处置**：在 `shadowrocket.conf` 的 `[URL Rewrite]` 用 302 把该页的明文 HTTP 请求改写为同名 HTTPS 地址：
 
-- 改用 **HTTPS** 打开该页：HTTPS 下代理只看到 `CONNECT host:443`，请求路径在 TLS 内由浏览器构造，fragment 必然被剥离，问题从根上绕开。
-- 该站对 `/html5/` **不做 HTTP→HTTPS 跳转**（`http` 与 `https` 均返回 200），拿不到服务端自动保护，需手动把链接的 `http://` 改为 `https://`。
-- 临时关闭代理可访问，仅作应急。
+```
+^http://(www\.)?eshouhou\.cn/html5/ https://www.eshouhou.cn/html5/ 302
+```
+
+HTTPS 下代理只看到 `CONNECT host:443`，请求路径在 TLS 内由浏览器构造，fragment 必然被剥离，问题从根上绕开。该站对 `/html5/` 不做 HTTP→HTTPS 跳转（`http` 与 `https` 均返回 200），这一跳只能由客户端侧完成。应急替代是临时关闭代理访问。
