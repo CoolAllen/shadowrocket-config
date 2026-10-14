@@ -5,7 +5,12 @@
 # 仓库: https://github.com/DuskWander87/shadowrocket-config
 # 更新: 手动维护，新增域名请先通过 domain-verify skill 确认归属
 
+
+# AI
+DOMAIN-SUFFIX,deepseek.com
 # 字节跳动系
+DOMAIN-SUFFIX,volcengine.com
+DOMAIN-SUFFIX,bytedance.com
 DOMAIN-SUFFIX,byteacctimg.com
 DOMAIN-SUFFIX,bytegecko.com
 DOMAIN-SUFFIX,bytehwm.com
@@ -79,6 +84,7 @@ DOMAIN-SUFFIX,koubei.com
 
 # 阿里巴巴集团企业服务
 DOMAIN-SUFFIX,alibaba-inc.com
+DOMAIN-SUFFIX,aliyun.com
 
 # 招商银行 (招商银行股份有限公司)
 DOMAIN-SUFFIX,cmbimg.com
